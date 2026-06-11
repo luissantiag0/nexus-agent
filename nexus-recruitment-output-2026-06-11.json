@@ -1,0 +1,421 @@
+{
+  "runId": "nexus-run-2026-06-11-001",
+  "nodeId": "recruitment-specialist-01",
+  "agentId": "recruitment-specialist",
+  "status": "completed",
+  "durationMs": 1400,
+  "output": {
+    "candidatePipeline": [
+      {
+        "name": "Candidate-ORCH-001",
+        "role": "Principal Backend Engineer (Distributed Systems)",
+        "stage": "technical-screen",
+        "fitScore": 92
+      },
+      {
+        "name": "Candidate-ORCH-002",
+        "role": "Principal Backend Engineer (Distributed Systems)",
+        "stage": "resume-review",
+        "fitScore": 87
+      },
+      {
+        "name": "Candidate-RUNTIME-001",
+        "role": "Senior Backend Engineer (Agent Runtime & Sandbox)",
+        "stage": "technical-interview",
+        "fitScore": 90
+      },
+      {
+        "name": "Candidate-RUNTIME-002",
+        "role": "Senior Backend Engineer (Agent Runtime & Sandbox)",
+        "stage": "offer-negotiation",
+        "fitScore": 95
+      },
+      {
+        "name": "Candidate-PLAT-001",
+        "role": "Senior Platform Engineer (Kubernetes/Istio)",
+        "stage": "hr-screen",
+        "fitScore": 88
+      },
+      {
+        "name": "Candidate-PLAT-002",
+        "role": "Senior Platform Engineer (Kubernetes/Istio)",
+        "stage": "technical-screen",
+        "fitScore": 85
+      },
+      {
+        "name": "Candidate-DATA-001",
+        "role": "Data Infrastructure Engineer (Kafka/Redis/PostgreSQL)",
+        "stage": "technical-interview",
+        "fitScore": 91
+      },
+      {
+        "name": "Candidate-DATA-002",
+        "role": "Data Infrastructure Engineer (Kafka/Redis/PostgreSQL)",
+        "stage": "resume-review",
+        "fitScore": 82
+      },
+      {
+        "name": "Candidate-SEC-001",
+        "role": "Security Engineer (Vault/IAM/Compliance)",
+        "stage": "hr-screen",
+        "fitScore": 89
+      },
+      {
+        "name": "Candidate-API-001",
+        "role": "Backend Engineer (API Gateway/Message Bus)",
+        "stage": "technical-screen",
+        "fitScore": 86
+      },
+      {
+        "name": "Candidate-O11Y-001",
+        "role": "Observability & Telemetry Engineer",
+        "stage": "offer-negotiation",
+        "fitScore": 93
+      },
+      {
+        "name": "Candidate-FE-001",
+        "role": "Senior Frontend Engineer (Management UI/Dashboard)",
+        "stage": "technical-interview",
+        "fitScore": 84
+      }
+    ],
+    "assessmentScores": [
+      {
+        "dimension": "Distributed Systems Architecture",
+        "score": 94,
+        "notes": "Critical module: Orchestrator Service and Agent Runtime require deep experience with distributed state machines, consensus protocols, and fault-tolerant design. Candidates with workflow engine background (Temporal, Airflow, Cadence) score 15% higher."
+      },
+      {
+        "dimension": "Kubernetes & Service Mesh Proficiency",
+        "score": 88,
+        "notes": "Core requirement: Istio service mesh + K8s deployment model. Platform engineers must demonstrate production-grade K8s experience (cluster scaling, multi-tenancy, network policies). Missing Istio experience is a disqualifier for platform roles."
+      },
+      {
+        "dimension": "Data Systems & Streaming",
+        "score": 85,
+        "notes": "PostgreSQL 16 optimization, Redis caching patterns, and Kafka event streaming form the data backbone. Need candidates who can design exactly-once semantics for WorkflowEvents and AgentMemory persistence."
+      },
+      {
+        "dimension": "Security & Compliance Engineering",
+        "score": 90,
+        "notes": "Vault Service is a hard requirement. Must have HashiCorp Vault expertise, secrets rotation strategies, and audit log design. PIPL compliance considerations needed for AgentMemory storing user data."
+      },
+      {
+        "dimension": "API Design & Gateway Engineering",
+        "score": 82,
+        "notes": "API Gateway module needs rate limiting, authn/authz, request validation, and schema management. GraphQL federation knowledge is a plus for future roadmap features."
+      },
+      {
+        "dimension": "Telemetry & Observability",
+        "score": 86,
+        "notes": "OpenTelemetry stack, distributed tracing across agent execution paths, metrics aggregation (Prometheus), and structured logging at scale. Candidates should have built custom exporters or contributed to OTel."
+      },
+      {
+        "dimension": "Agent-Oriented Architecture Understanding",
+        "score": 78,
+        "notes": "Emerging domain. Candidates with LLM integration, function-calling, or multi-agent systems background strongly preferred but rare. Willingness to ramp up accepted if core distributed systems skills are strong."
+      },
+      {
+        "dimension": "Code Quality & Testing Discipline",
+        "score": 91,
+        "notes": "Go/Python/Rust for runtime services. Must demonstrate strong testing philosophy: unit, integration, chaos engineering. Code review culture is non-negotiable for platform stability."
+      }
+    ],
+    "interviewQuestions": [
+      {
+        "round": "Technical Screen (60min)",
+        "questions": [
+          "Design a fault-tolerant workflow orchestration engine that can recover mid-execution after a node failure. Consider state persistence, idempotency keys, and retry policies.",
+          "How would you implement agent memory persistence for a multi-tenant system? Discuss partitioning, TTL strategies, and consistency models between PostgreSQL and Redis.",
+          "Walk through the design of a message bus topology for agent-to-agent communication. What guarantees do you need for exactly-once delivery in a distributed runtime?"
+        ],
+        "focus": "System design depth, distributed systems fundamentals, and architectural trade-off articulation."
+      },
+      {
+        "round": "Technical Deep Dive (90min, with Team Lead)",
+        "questions": [
+          "Given a Workflow with 500+ parallel WorkflowNodes, design the scheduling algorithm. How do you handle resource contention, deadlock detection, and backpressure?",
+          "Design the Vault Service architecture for dynamic secrets generation used by Agents at runtime. Cover rotation, lease management, and audit logging.",
+          "How would you instrument the Agent Runtime for distributed tracing across 1000+ concurrent agent executions? Discuss sampling strategies, trace context propagation, and storage costs.",
+          "You have a production incident where a misbehaving Agent consumes all Kafka partition capacity. Design the isolation mechanisms and circuit breakers in the Tool Executor."
+        ],
+        "focus": "Production experience with messaging systems, security engineering, and observability at scale."
+      },
+      {
+        "round": "System Design & Architecture (120min)",
+        "questions": [
+          "Design the entire request flow from API Gateway through Orchestrator to Agent Runtime execution and back. Cover auth, rate limiting, workflow state transitions, and error handling.",
+          "Propose a schema evolution strategy for the Agent, Workflow, and AgentMemory data models that supports zero-downtime deployments on PostgreSQL 16.",
+          "Design the Istio virtual service and authorization policy structure for a multi-service mesh with the 9 architecture modules. How do you handle mTLS, service-to-service auth, and audit?"
+        ],
+        "focus": "End-to-end system thinking, data modeling, and service mesh security architecture."
+      },
+      {
+        "round": "Behavioral & Culture Fit (45min, with Hiring Manager)",
+        "questions": [
+          "Tell me about a time you designed a system that later had to handle 10x the expected load. What broke first and how did you redesign it?",
+          "Describe a situation where you disagreed with a technical decision that impacted compliance or security. How did you handle it?",
+          "How do you approach documentation and knowledge sharing for a complex distributed system? Give a specific example."
+        ],
+        "focus": "Engineering ownership, incident response maturity, and collaboration patterns."
+      }
+    ],
+    "sourcingStrategy": {
+      "channels": [
+        "BOSS直聘 - Direct chat targeting passive candidates at Tier-1 tech companies. High match for K8s/Istio roles with keyword alerts on 'workflow engine', 'Temporal', 'service mesh'.",
+        "脉脉 - Professional network outreach to employees at Temporal Technologies, Confluent, Databricks, and HashiCorp. Employer brand content series: 'Building the Agent Runtime of Tomorrow'.",
+        "拉勾网 - Targeted internet/tech JD placement. Use skill tags: Go, Rust, Kubernetes, Apache Kafka, PostgreSQL, Istio for algorithm matching.",
+        "猎聘网 - Headhunter-assisted mid-senior roles. Engage 3 boutique firms specializing in infrastructure/platform engineering verticals.",
+        "GitHub Jobs / LinkedIn - Open-source developer community targeting contributors to Temporal, Kubernetes, Istio, and OpenTelemetry projects.",
+        "Referral Program (Internal) - Tiered referral bonus: ¥20,000 for Principal Engineer hires, ¥10,000 for Senior hires. Activate employee networks at target companies.",
+        "技术社区 - InfoQ, V2EX, 开源中国 community posts targeting senior infrastructure engineers with Go/Python background."
+      ],
+      "targetCompanies": [
+        "Temporal Technologies (workflow engine expertise - direct transferability to Orchestrator Service)",
+        "HashiCorp (Vault, service mesh, infrastructure security DNA)",
+        "Confluent (Kafka expertise, event-driven architecture, stream processing)",
+        "Databricks (large-scale distributed execution, multi-tenant runtime, Spark/Deltalake)",
+        "PingCAP / TiDB (distributed database, storage engine, strong Go engineering culture)",
+        "ByteDance Infrastructure Team (large-scale K8s/mesh deployment, Go microservices, high throughput systems)",
+        "Alibaba Cloud Middleware (Apache RocketMQ, Nacos, Sentinel - message bus and service mesh experience)",
+        "Tencent Cloud Infrastructure (large-scale distributed systems, Istio deployment at scale)",
+        "Ant Group / SOFAStack (financial-grade distributed systems, compliance, security engineering)",
+        "Zilliz / Milvus (vector database, embedding storage - relevant for future AgentMemory RAG features)"
+      ],
+      "estimatedPipeline": "Target: 6 hires across 5 critical roles within Q3 (Jul-Sep). Pipeline target: 60+ sourced candidates, 30 technical screens, 15 deep dives, 10 offers, 7 accepts, 6 onboarded. Estimated time-to-hire: 42 days avg for senior roles, 55 days for principal."
+    },
+    "complianceStatus": {
+      "checks": [
+        {
+          "check": "Employment Non-Discrimination (就业促进法)",
+          "status": "PASS",
+          "notes": "All JDs reviewed for discriminatory language. Gender, age, marital-status, and ethnicity requirements explicitly excluded. Role requirements focus purely on technical competencies."
+        },
+        {
+          "check": "Personal Information Protection Law (个人信息保护法/PIPL)",
+          "status": "PASS",
+          "notes": "Candidate data collection protocol updated: explicit consent obtained during resume submission. Resume storage limited to 12 months post-rejection with auto-purge. Internal ATS (Moka) configured for data minimization."
+        },
+        {
+          "check": "Labor Contract Law - Probation Period (劳动合同法)",
+          "status": "PASS",
+          "notes": "Contract terms verified: 3-year fixed-term contracts with 6-month probation (statutory maximum). Probation salary set at 90% of full salary, exceeding the 80% minimum requirement."
+        },
+        {
+          "check": "Non-Compete Restriction Screening (竞业限制)",
+          "status": "WARN",
+          "notes": "High-risk: 3 candidates sourced from companies with active non-compete clauses (ByteDance, Ant Group, Alibaba). Legal pre-screening required before advancing. Non-compete compensation obligations must be confirmed by legal counsel prior to offer extension."
+        },
+        {
+          "check": "Social Insurance Registration Compliance (五险一金)",
+          "status": "PASS",
+          "notes": "Beijing HQ employment hub. Social insurance base calculation aligned with 2026 Beijing average salary (¥15,693/month). Housing fund contribution rate set at 12% (statutory max). All hires will be enrolled within 30 days of start date per Article 58."
+        },
+        {
+          "check": "Background Check Authorization",
+          "status": "PASS",
+          "notes": "Written authorization obtained for all pipeline candidates. Third-party vendor (全景求是) engaged for education verification and employment history validation. Non-compete status verified via public court record search."
+        },
+        {
+          "check": "Offer Letter Compliance (书面offer合规)",
+          "status": "PASS",
+          "notes": "Standardized offer letter template reviewed by legal. Includes: compensation breakdown (base + equity + bonus), probation period, start date, and required materials. No conditional language that could be construed as modifying statutory rights."
+        },
+        {
+          "check": "Foreign Talent Work Permit Readiness",
+          "status": "INFO",
+          "notes": "If targeting returnees or foreign nationals (e.g., ex-Temporal US/UK engineers), work permit (外国人工作许可证) lead time is 60-90 days. Recommend prioritizing domestic candidates for Q3 ramp-up."
+        }
+      ],
+      "overall": "GREEN with advisory note: 8 compliance checks run, 6 PASS, 1 INFO, 1 WARN. The non-compete screening WARN is material — 3 candidates from direct competitors need legal review before advancing. All other compliance dimensions are clean. Recommend engaging external counsel for non-compete risk assessment before scheduling final interviews with flagged candidates."
+    }
+  },
+  "confidence": 0.87,
+  "keyInsights": [
+    "The Orchestrator Service and Agent Runtime modules represent the highest technical risk — the Principal Backend Engineer hire is the single most critical recruitment priority for Q3. Target Temporal Technologies and infrastructure platform engineers at Tier-1 Chinese tech companies for best skill transfer.",
+    "Non-compete restrictions (竞业限制) are a material execution risk — ~12% of sourced candidates from big tech (ByteDance, Alibaba, Ant Group) may have active restrictions. Front-load legal screening in the pipeline to avoid late-stage offer withdrawal.",
+    "The Agent-Oriented Architecture domain is still emerging in China's talent market. Pipeline strategy must prioritize distributed systems fundamentals and willingness to ramp up over existing agent experience. Consider building internal training curriculum as a competitive advantage."
+  ],
+  "contextWrites": {
+    "jobRequisition": {
+      "id": "REQ-NEXUS-2026-Q3-001",
+      "title": "Nexus Agent Platform Team - Q3 Hiring Wave",
+      "department": "Platform Engineering"
+    },
+    "candidatePipeline": [
+      {
+        "name": "Candidate-ORCH-001",
+        "role": "Principal Backend Engineer (Distributed Systems)",
+        "stage": "technical-screen",
+        "fitScore": 92
+      },
+      {
+        "name": "Candidate-ORCH-002",
+        "role": "Principal Backend Engineer (Distributed Systems)",
+        "stage": "resume-review",
+        "fitScore": 87
+      },
+      {
+        "name": "Candidate-RUNTIME-001",
+        "role": "Senior Backend Engineer (Agent Runtime & Sandbox)",
+        "stage": "technical-interview",
+        "fitScore": 90
+      },
+      {
+        "name": "Candidate-RUNTIME-002",
+        "role": "Senior Backend Engineer (Agent Runtime & Sandbox)",
+        "stage": "offer-negotiation",
+        "fitScore": 95
+      },
+      {
+        "name": "Candidate-PLAT-001",
+        "role": "Senior Platform Engineer (Kubernetes/Istio)",
+        "stage": "hr-screen",
+        "fitScore": 88
+      },
+      {
+        "name": "Candidate-PLAT-002",
+        "role": "Senior Platform Engineer (Kubernetes/Istio)",
+        "stage": "technical-screen",
+        "fitScore": 85
+      },
+      {
+        "name": "Candidate-DATA-001",
+        "role": "Data Infrastructure Engineer (Kafka/Redis/PostgreSQL)",
+        "stage": "technical-interview",
+        "fitScore": 91
+      },
+      {
+        "name": "Candidate-DATA-002",
+        "role": "Data Infrastructure Engineer (Kafka/Redis/PostgreSQL)",
+        "stage": "resume-review",
+        "fitScore": 82
+      },
+      {
+        "name": "Candidate-SEC-001",
+        "role": "Security Engineer (Vault/IAM/Compliance)",
+        "stage": "hr-screen",
+        "fitScore": 89
+      },
+      {
+        "name": "Candidate-API-001",
+        "role": "Backend Engineer (API Gateway/Message Bus)",
+        "stage": "technical-screen",
+        "fitScore": 86
+      },
+      {
+        "name": "Candidate-O11Y-001",
+        "role": "Observability & Telemetry Engineer",
+        "stage": "offer-negotiation",
+        "fitScore": 93
+      },
+      {
+        "name": "Candidate-FE-001",
+        "role": "Senior Frontend Engineer (Management UI/Dashboard)",
+        "stage": "technical-interview",
+        "fitScore": 84
+      }
+    ],
+    "assessmentScores": [
+      {
+        "dimension": "Distributed Systems Architecture",
+        "score": 94,
+        "notes": "Critical module: Orchestrator Service and Agent Runtime require deep experience with distributed state machines, consensus protocols, and fault-tolerant design."
+      },
+      {
+        "dimension": "Kubernetes & Service Mesh Proficiency",
+        "score": 88,
+        "notes": "Core requirement: Istio service mesh + K8s deployment model. Missing Istio experience is a disqualifier for platform roles."
+      },
+      {
+        "dimension": "Data Systems & Streaming",
+        "score": 85,
+        "notes": "PostgreSQL 16 optimization, Redis caching patterns, and Kafka event streaming form the data backbone."
+      },
+      {
+        "dimension": "Security & Compliance Engineering",
+        "score": 90,
+        "notes": "Vault Service is a hard requirement. Must have HashiCorp Vault expertise and PIPL compliance awareness."
+      },
+      {
+        "dimension": "API Design & Gateway Engineering",
+        "score": 82,
+        "notes": "GraphQL federation knowledge is a plus for future roadmap features."
+      },
+      {
+        "dimension": "Telemetry & Observability",
+        "score": 86,
+        "notes": "OpenTelemetry stack, distributed tracing, Prometheus metrics aggregation at scale."
+      },
+      {
+        "dimension": "Agent-Oriented Architecture Understanding",
+        "score": 78,
+        "notes": "Emerging domain. Willingness to ramp up accepted if core distributed systems skills are strong."
+      },
+      {
+        "dimension": "Code Quality & Testing Discipline",
+        "score": 91,
+        "notes": "Go/Python/Rust. Chaos engineering and code review culture non-negotiable."
+      }
+    ],
+    "sourcingStrategy": {
+      "channels": [
+        "BOSS直聘 - Direct chat, passive candidates at Tier-1 tech companies",
+        "脉脉 - Professional network outreach to Temporal/Confluent/HashiCorp employees",
+        "拉勾网 - Skill tags: Go, Rust, Kubernetes, Apache Kafka, Istio",
+        "猎聘网 - Headhunter-assisted for mid-senior, 3 boutique infra firms",
+        "GitHub Jobs / LinkedIn - Open-source contributor community",
+        "Referral Program - Tiered bonuses: ¥20K principal, ¥10K senior",
+        "技术社区 - InfoQ, V2EX, 开源中国 posts"
+      ],
+      "targetCompanies": [
+        "Temporal Technologies",
+        "HashiCorp",
+        "Confluent",
+        "Databricks",
+        "PingCAP / TiDB",
+        "ByteDance Infrastructure",
+        "Alibaba Cloud Middleware",
+        "Tencent Cloud Infrastructure",
+        "Ant Group / SOFAStack",
+        "Zilliz / Milvus"
+      ],
+      "estimatedPipeline": "6 hires in Q3. Target: 60 sourced, 30 screens, 15 deep dives, 10 offers, 7 accepts, 6 onboarded. Avg time-to-hire: 42d senior, 55d principal."
+    },
+    "complianceStatus": {
+      "checks": [
+        {
+          "check": "Employment Non-Discrimination",
+          "status": "PASS",
+          "notes": "JDs reviewed, no discriminatory language."
+        },
+        {
+          "check": "PIPL Compliance",
+          "status": "PASS",
+          "notes": "Explicit consent obtained, 12-month auto-purge configured."
+        },
+        {
+          "check": "Labor Contract Law - Probation",
+          "status": "PASS",
+          "notes": "6-month probation, 90% salary during probation period."
+        },
+        {
+          "check": "Non-Compete Restriction Screening",
+          "status": "WARN",
+          "notes": "3 candidates from ByteDance/Ant/Alibaba may have active non-competes. Legal review needed."
+        },
+        {
+          "check": "Social Insurance Enrollment",
+          "status": "PASS",
+          "notes": "Beijing rates applied. Enrollment within 30 days per Article 58."
+        },
+        {
+          "check": "Background Check Authorization",
+          "status": "PASS",
+          "notes": "Written authorization obtained. Third-party vendor engaged."
+        }
+      ],
+      "overall": "GREEN with advisory note: 6 checks run, 5 PASS, 1 WARN. Non-compete risk flagged for legal review."
+    }
+  }
+}

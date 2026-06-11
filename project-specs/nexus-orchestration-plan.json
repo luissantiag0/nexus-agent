@@ -1,0 +1,521 @@
+{
+  "orchestrationPlan": {
+    "planVersion": "1.0.0",
+    "platform": "Nexus Agent Platform — Agent Orchestration Runtime Engine",
+    "date": "2026-06-11",
+    "orchestrator": "Agents Orchestrator",
+    "status": "APPROVED",
+
+    "modules": [
+      {
+        "id": "M0",
+        "name": "Project Foundation",
+        "description": "Directory structure, tooling config, workspace setup",
+        "dependencies": [],
+        "primaryBuilder": "Backend Architect",
+        "supportingAgents": ["Workflow Architect", "Product Manager"],
+        "qaAgent": "Agents Orchestrator",
+        "estimatedDays": 0.5,
+        "buildOrder": 0
+      },
+      {
+        "id": "M5",
+        "name": "Strict Type System",
+        "description": "AgentInput, AgentOutput, AgentContext, GraphTypes, Zod validation, branded types",
+        "dependencies": ["M0"],
+        "primaryBuilder": "Backend Architect",
+        "supportingAgents": ["Workflow Architect"],
+        "qaAgent": "EvidenceQA",
+        "estimatedDays": 2,
+        "buildOrder": 1,
+        "deliverables": [
+          "src/types/agent-input.types.ts",
+          "src/types/agent-output.types.ts",
+          "src/types/agent-context.types.ts",
+          "src/types/agent-meta.types.ts",
+          "src/types/execution-graph.types.ts",
+          "src/types/pipeline.types.ts",
+          "src/types/registry.types.ts",
+          "src/types/prompt.types.ts",
+          "src/types/supabase.types.ts",
+          "src/types/webhook.types.ts",
+          "src/types/voice.types.ts",
+          "src/types/result.types.ts",
+          "src/types/validation.ts",
+          "src/types/branded.ts",
+          "src/types/index.ts"
+        ],
+        "qualityGates": [
+          "G-M5-1: tsc --noEmit with zero errors",
+          "G-M5-2: All Zod schemas pass robust test cases"
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Agent Registry",
+        "description": "Loads exactly 18 agents from .opencode/agents/, no extension API",
+        "dependencies": ["M0", "M5"],
+        "primaryBuilder": "Backend Architect",
+        "supportingAgents": ["Workflow Architect"],
+        "qaAgent": "EvidenceQA",
+        "estimatedDays": 2,
+        "buildOrder": 2,
+        "deliverables": [
+          "src/registry/agent-registry.ts",
+          "src/registry/agent-loader.ts",
+          "src/registry/agent-parser.ts",
+          "src/registry/agent-validator.ts",
+          "src/registry/agent-cache.ts",
+          "src/registry/registry.router.ts",
+          "src/registry/index.ts"
+        ],
+        "qualityGates": [
+          "G-M3-1: getAll().length === 18",
+          "G-M3-2: All frontmatter parses without errors",
+          "G-M3-3: Unknown agent IDs return undefined"
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Supabase Layer",
+        "description": "Repository pattern, service layer, migrations, RLS",
+        "dependencies": ["M0", "M5"],
+        "primaryBuilder": "Infrastructure Maintainer",
+        "supportingAgents": ["Backend Architect"],
+        "qaAgent": "API Tester",
+        "estimatedDays": 3,
+        "buildOrder": 3,
+        "deliverables": [
+          "src/supabase/client.ts",
+          "src/supabase/migrations/*.sql",
+          "src/supabase/repositories/*.ts",
+          "src/supabase/services/*.ts",
+          "src/supabase/types.ts",
+          "src/supabase/index.ts"
+        ],
+        "qualityGates": [
+          "G-M6-1: All 5 migrations apply/revert cleanly",
+          "G-M6-2: Each repository passes CRUD tests",
+          "G-M6-3: Repository types match M5 type expectations"
+        ]
+      },
+      {
+        "id": "M1",
+        "name": "Agent Execution Engine",
+        "description": "AgentRunner, AgentChain, AgentGraph (DAG), AgentContext, AgentResult",
+        "dependencies": ["M0", "M5", "M3"],
+        "primaryBuilder": "Backend Architect",
+        "supportingAgents": ["Workflow Architect"],
+        "qaAgent": "EvidenceQA",
+        "estimatedDays": 4,
+        "buildOrder": 4,
+        "deliverables": [
+          "src/engine/runner/agent-runner.ts",
+          "src/engine/chain/agent-chain.ts",
+          "src/engine/graph/agent-graph.ts",
+          "src/engine/context/agent-context.ts",
+          "src/engine/result/agent-result.ts",
+          "src/engine/index.ts"
+        ],
+        "qualityGates": [
+          "G-M1-1: Single runner executes any registered agent",
+          "G-M1-2: 3-agent chain passes context correctly",
+          "G-M1-3: DAG fan-out-fan-in completes with parallel branches",
+          "G-M1-4: Cycle detection rejects invalid DAGs"
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Core Orchestration Layer",
+        "description": "SingleAgentExec, MultiAgentPipeline, ConditionalRouting, ContextPropagation",
+        "dependencies": ["M0", "M5", "M3", "M1"],
+        "primaryBuilder": "Backend Architect",
+        "supportingAgents": ["Workflow Architect"],
+        "qaAgent": "EvidenceQA",
+        "estimatedDays": 4,
+        "buildOrder": 5,
+        "deliverables": [
+          "src/orchestration/single/single-agent-exec.ts",
+          "src/orchestration/pipeline/multi-agent-pipeline.ts",
+          "src/orchestration/routing/conditional-router.ts",
+          "src/orchestration/propagation/context-propagator.ts",
+          "src/orchestration/lifecycle/pipeline-lifecycle.ts",
+          "src/orchestration/middleware/*.ts",
+          "src/orchestration/index.ts"
+        ],
+        "qualityGates": [
+          "G-M2-1: Pipeline state machine transitions correctly",
+          "G-M2-2: Conditional routing follows correct branch",
+          "G-M2-3: Error isolation in parallel branches",
+          "G-M2-4: Context propagation through pipeline"
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Externalized Prompt System",
+        "description": "Versioned prompts, template compilation, agent binding, hot-reload",
+        "dependencies": ["M0", "M5", "M3"],
+        "primaryBuilder": "Backend Architect",
+        "supportingAgents": ["Product Manager", "Content Creator"],
+        "qaAgent": "EvidenceQA",
+        "estimatedDays": 2,
+        "buildOrder": 6,
+        "deliverables": [
+          "src/prompts/prompt-registry.ts",
+          "src/prompts/prompt-loader.ts",
+          "src/prompts/prompt-resolver.ts",
+          "src/prompts/prompt-compiler.ts",
+          "src/prompts/prompt-version.ts",
+          "src/prompts/templates/default/*.hbs",
+          "src/prompts/templates/agents/**/*.hbs",
+          "src/prompts/index.ts"
+        ],
+        "qualityGates": [
+          "G-M4-1: All 18 agents have >= 1 prompt version",
+          "G-M4-2: Version pinning resolves consistently",
+          "G-M4-3: Templates compile with real context"
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "n8n Integration",
+        "description": "Webhook-triggered, zero business logic in n8n",
+        "dependencies": ["M0", "M2", "M6"],
+        "primaryBuilder": "Infrastructure Maintainer",
+        "supportingAgents": ["Workflow Architect"],
+        "qaAgent": "API Tester",
+        "estimatedDays": 2,
+        "buildOrder": 7,
+        "deliverables": [
+          "src/integrations/n8n/webhook-handler.ts",
+          "src/integrations/n8n/webhook-validator.ts",
+          "src/integrations/n8n/webhook-router.ts",
+          "src/integrations/n8n/webhook-response.ts",
+          "src/integrations/n8n/n8n-workflows/*.json",
+          "src/integrations/n8n/index.ts"
+        ],
+        "qualityGates": [
+          "G-M7-1: Webhook endpoint returns 200 with valid payload",
+          "G-M7-2: Webhook triggers M2 pipeline execution",
+          "G-M7-3: Invalid HMAC signatures rejected with 401"
+        ]
+      },
+      {
+        "id": "P8",
+        "name": "UI Dashboard",
+        "description": "Admin dashboard, pipeline builder, execution history",
+        "dependencies": ["M3", "M2", "M6"],
+        "primaryBuilder": "UI Designer",
+        "supportingAgents": ["Pipeline Analyst"],
+        "qaAgent": "EvidenceQA",
+        "estimatedDays": 2,
+        "buildOrder": 8,
+        "deliverables": [
+          "src/ui/pages/dashboard.tsx",
+          "src/ui/pages/pipeline-builder.tsx",
+          "src/ui/pages/agent-detail.tsx",
+          "src/ui/pages/execution-history.tsx",
+          "src/ui/components/*.tsx",
+          "src/ui/hooks/*.ts",
+          "src/ui/styles/dashboard.css"
+        ],
+        "qualityGates": [
+          "G-P8-1: UI displays all 18 agents from M3",
+          "G-P8-2: Pipeline builder creates valid pipeline config"
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Voice Layer",
+        "description": "STT/TTS/LiveKit stubs, feature-flag gated, inactive",
+        "dependencies": ["M0"],
+        "primaryBuilder": "Infrastructure Maintainer",
+        "supportingAgents": ["Backend Architect"],
+        "qaAgent": "EvidenceQA",
+        "estimatedDays": 0.5,
+        "buildOrder": 9,
+        "deliverables": [
+          "src/integrations/voice/stt-stub.ts",
+          "src/integrations/voice/tts-stub.ts",
+          "src/integrations/voice/livekit-stub.ts",
+          "src/integrations/voice/voice-config.ts",
+          "src/integrations/voice/types.ts",
+          "src/integrations/voice/index.ts"
+        ],
+        "qualityGates": [
+          "G-M8-1: Voice compiles, enabled === false, no active connections"
+        ]
+      },
+      {
+        "id": "P10",
+        "name": "Integration & QA",
+        "description": "Cross-module integration, full smoke test, performance validation",
+        "dependencies": ["M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "P8"],
+        "primaryBuilder": "Agents Orchestrator",
+        "supportingAgents": ["TestingRealityChecker", "EvidenceQA"],
+        "qaAgent": "TestingRealityChecker",
+        "estimatedDays": 3,
+        "buildOrder": 10,
+        "qualityGates": [
+          "G-INT-1: End-to-end smoke test passes",
+          "G-INT-2: Performance benchmarks met",
+          "G-INT-3: Zero regression across all modules"
+        ]
+      },
+      {
+        "id": "P11",
+        "name": "Documentation & Go-to-Market",
+        "description": "Technical docs, API reference, onboarding guide, launch assets",
+        "dependencies": ["P10"],
+        "primaryBuilder": "Content Creator",
+        "supportingAgents": ["SEO Specialist", "Social Media Strategist", "Growth Hacker", "Customer Service", "Support Responder"],
+        "estimatedDays": 2,
+        "buildOrder": 11
+      }
+    ],
+
+    "dependencyMap": {
+      "edges": [
+        { "from": "M0", "to": "M5", "type": "foundation" },
+        { "from": "M0", "to": "M3", "type": "foundation" },
+        { "from": "M0", "to": "M6", "type": "foundation" },
+        { "from": "M0", "to": "M8", "type": "foundation" },
+        { "from": "M5", "to": "M3", "type": "type-contract" },
+        { "from": "M5", "to": "M6", "type": "type-contract" },
+        { "from": "M5", "to": "M1", "type": "type-contract" },
+        { "from": "M5", "to": "M4", "type": "type-contract" },
+        { "from": "M3", "to": "M1", "type": "data-dependency" },
+        { "from": "M3", "to": "M4", "type": "data-dependency" },
+        { "from": "M1", "to": "M2", "type": "execution-engine" },
+        { "from": "M3", "to": "M2", "type": "registry-api" },
+        { "from": "M2", "to": "M7", "type": "orchestration-api" },
+        { "from": "M6", "to": "M7", "type": "persistence" },
+        { "from": "M3", "to": "P8", "type": "data-display" },
+        { "from": "M2", "to": "P8", "type": "control-api" },
+        { "from": "M6", "to": "P8", "type": "data-source" }
+      ],
+      "criticalPath": ["M0", "M5", "M3", "M1", "M2", "M7", "P10"],
+      "parallelizable": [
+        ["M6", "M3"],
+        ["M4", "M1"],
+        ["P8", "M7"],
+        ["P11", "P10"]
+      ]
+    },
+
+    "agentAssignments": {
+      "primaryBuilders": {
+        "Backend Architect": ["M5", "M3", "M1", "M2", "M4"],
+        "Infrastructure Maintainer": ["M6", "M7", "M8"],
+        "UI Designer": ["P8"],
+        "Content Creator": ["P11"],
+        "Agents Orchestrator": ["P10"]
+      },
+      "specContributors": {
+        "Product Manager": "PRDs, acceptance criteria, prioritization for all modules",
+        "Workflow Architect": "DAG specs, handoff contracts, error recovery, routing workflows",
+        "Trend Researcher": "Back-compat requirements, ecosystem analysis, tech risk assessment",
+        "Pipeline Analyst": "Pipeline health metrics, KPI schema, dashboard requirements",
+        "Deal Strategist": "Conditional routing business rules for pipeline branching",
+        "Proposal Strategist": "Output template schema, report formatting specifications",
+        "Sales Outreach": "Agent interaction UX specs, user stories for pipeline creation UI",
+        "Customer Service": "Error message tone/branding, user-facing text specifications",
+        "Support Responder": "Failure recovery workflow specs, escalation procedure definitions",
+        "Recruitment Specialist": "Agent capability assessment framework, skill matching schema",
+        "Growth Hacker": "A/B pipeline routing specs, experimental pipeline patterns",
+        "SEO Specialist": "URL structure spec, doc site meta, schema markup",
+        "Social Media Strategist": "Changelog/announcement content specifications"
+      },
+      "qaAgents": {
+        "EvidenceQA": ["M5", "M3", "M1", "M2", "M4", "M8", "P8"],
+        "API Tester": ["M6", "M7"],
+        "TestingRealityChecker": ["P10"],
+        "Performance Benchmarker": ["P10"],
+        "Test Results Analyzer": ["P10"]
+      }
+    },
+
+    "metaOrchestration": {
+      "role": "META — operates one level above all builder agents",
+      "doesNotWriteCode": true,
+      "responsibilities": [
+        "Define pipeline plan (this document)",
+        "Spawn correct builder agent at correct phase",
+        "Run Dev-QA loop on each module deliverable",
+        "Enforce quality gates before phase advancement",
+        "Manage retry logic (max 3 attempts per task)",
+        "Coordinate agent handoffs with full context",
+        "Validate cross-module integration",
+        "Report pipeline status throughout"
+      ],
+      "runtimeRole": "Agent #1 in registry — pipeline manager that other pipelines can invoke",
+      "stateMachine": ["INIT", "PLANNING", "EXECUTING", "QA_GATE", "INTEGRATION", "COMPLETED"]
+    },
+
+    "namingConventions": {
+      "directories": "kebab-case (e.g., src/agent-registry/)",
+      "files": "kebab-case (e.g., agent-runner.ts)",
+      "typeFiles": "*.types.ts suffix (e.g., execution-graph.types.ts)",
+      "configFiles": "*.config.ts suffix (e.g., supabase.config.ts)",
+      "testFiles": "*.test.ts / *.e2e.ts suffix",
+      "classes": "PascalCase (e.g., AgentRegistry, PipelineBuilder)",
+      "interfaces": "I + PascalCase (e.g., IAgentRunner, IAgentRegistry)",
+      "brandedTypes": "PascalCase (e.g., AgentId, SessionId, TaskId)",
+      "functions": "camelCase verbNoun (e.g., executePipeline, resolvePrompt)",
+      "envVars": "NEXUS_AGENT_<MODULE>_<KEY>",
+      "dbTables": "snake_case (e.g., agent_executions)",
+      "dbColumns": "snake_case (e.g., execution_time_ms)",
+      "barrelFiles": "index.ts (required in every module directory)"
+    },
+
+    "qualityGates": {
+      "totalGates": 27,
+      "gateSeverities": {
+        "BLOCKER": 18,
+        "WARNING": 7,
+        "INFO": 2
+      },
+      "criticalGates": [
+        "G-M3-1: Exactly 18 agents loaded",
+        "G-M1-1: Single runner executes all agents",
+        "G-M2-1: Pipeline state machine correct",
+        "G-INT-1: End-to-end smoke test passes"
+      ],
+      "validationArtifacts": [
+        "QA Report with PASS/FAIL per test case",
+        "Screenshot evidence for UI tests",
+        "Coverage report (line/branch/function)",
+        "Type check log (tsc --noEmit)",
+        "Execution trace logs"
+      ]
+    },
+
+    "riskRegister": [
+      {
+        "id": "R-01",
+        "description": "@Backend Architect over-allocated (5 modules)",
+        "probability": "HIGH",
+        "impact": "CRITICAL",
+        "mitigation": "Parallelize M6 (Infrastructure Maintainer) and spec work while Backend Architect builds M5 → M3 → M1"
+      },
+      {
+        "id": "R-02",
+        "description": "M5 type changes after downstream modules start",
+        "probability": "MEDIUM",
+        "impact": "HIGH",
+        "mitigation": "Interface-first contract. M5 delivers .types.ts FIRST. M1/M2 build against types not implementations."
+      },
+      {
+        "id": "R-03",
+        "description": "Agent frontmatter format inconsistencies",
+        "probability": "MEDIUM",
+        "impact": "MEDIUM",
+        "mitigation": "M3 parser handles variations gracefully"
+      },
+      {
+        "id": "R-04",
+        "description": "Supabase migrations conflict with M5 types",
+        "probability": "LOW",
+        "impact": "MEDIUM",
+        "mitigation": "M6 types.ts imports from M5; schema changes require M5 review"
+      },
+      {
+        "id": "R-05",
+        "description": "n8n webhook contract scope creep",
+        "probability": "LOW",
+        "impact": "LOW",
+        "mitigation": "Strict webhook contract in .types.ts. No business logic in n8n is enforced."
+      },
+      {
+        "id": "R-06",
+        "description": "Voice Layer scope creep",
+        "probability": "MEDIUM",
+        "impact": "LOW",
+        "mitigation": "Stubs only, behind feature flag. Voice expansion is separate initiative."
+      },
+      {
+        "id": "R-07",
+        "description": "Registry agent count changes",
+        "probability": "LOW",
+        "impact": "MEDIUM",
+        "mitigation": "Unit test asserts exact count. Any addition requires explicit spec change."
+      },
+      {
+        "id": "R-08",
+        "description": "Orchestrator role confusion (build-time vs runtime)",
+        "probability": "LOW",
+        "impact": "LOW",
+        "mitigation": "Distinct contexts documented in meta-orchestration section"
+      }
+    ],
+
+    "criticalIntegrationPoints": [
+      {
+        "id": "CIP-01",
+        "description": "M5 types compilable and importable by all consumer modules",
+        "validatedBy": "P10 Integration Test — import all types across all modules"
+      },
+      {
+        "id": "CIP-02",
+        "description": "M3 loads exactly 18 agents, rejects unknown IDs",
+        "validatedBy": "M3 unit test with exact count assertion"
+      },
+      {
+        "id": "CIP-03",
+        "description": "M1 returns valid AgentResult for any registered agent",
+        "validatedBy": "M1 integration test executing each of 18 agents"
+      },
+      {
+        "id": "CIP-04",
+        "description": "M2 routes context correctly through multi-agent pipeline",
+        "validatedBy": "M2 E2E test with 3+ agents and context assertion"
+      },
+      {
+        "id": "CIP-05",
+        "description": "M4 prompts resolve with correct version for agent",
+        "validatedBy": "M4 integration test pinning versions"
+      },
+      {
+        "id": "CIP-06",
+        "description": "M6 repositories return typed results matching M5 types",
+        "validatedBy": "M6 unit test comparing repository output to M5 schemas"
+      },
+      {
+        "id": "CIP-07",
+        "description": "M7 webhook triggers M2 pipeline with correct payload",
+        "validatedBy": "M7 integration test calling webhook and observing M2 execution"
+      },
+      {
+        "id": "CIP-08",
+        "description": "M8 stubs compile but never activate without feature flag",
+        "validatedBy": "P10 gate check: enable flag false, assert no active connections"
+      },
+      {
+        "id": "CIP-09",
+        "description": "P8 UI reads from M3 registry and M6 Supabase simultaneously",
+        "validatedBy": "P8 E2E test rendering dashboard with live data"
+      }
+    ],
+
+    "executionTimeline": {
+      "totalDaysSequential": 23,
+      "totalDaysParallelized": 14,
+      "phases": [
+        { "phase": "P0: Foundation", "days": 0.5, "parallelGroup": "pre" },
+        { "phase": "P1: Type System (M5)", "days": 2, "parallelGroup": "a", "dependsOn": ["pre"] },
+        { "phase": "P2: Agent Registry (M3)", "days": 2, "parallelGroup": "b1", "dependsOn": ["a"] },
+        { "phase": "P3: Supabase Layer (M6)", "days": 3, "parallelGroup": "b2", "dependsOn": ["a"] },
+        { "phase": "P4: Exec Engine (M1)", "days": 4, "parallelGroup": "c1", "dependsOn": ["b1"] },
+        { "phase": "P5: Orchestration (M2)", "days": 4, "parallelGroup": "d1", "dependsOn": ["c1"] },
+        { "phase": "P6: Prompt System (M4)", "days": 2, "parallelGroup": "c2", "dependsOn": ["b1"] },
+        { "phase": "P7: n8n Integration (M7)", "days": 2, "parallelGroup": "e1", "dependsOn": ["d1", "b2"] },
+        { "phase": "P8: UI Dashboard", "days": 2, "parallelGroup": "e2", "dependsOn": ["d1", "b2", "b1"] },
+        { "phase": "P9: Voice Layer (M8)", "days": 0.5, "parallelGroup": "e3", "dependsOn": ["pre"] },
+        { "phase": "P10: Integration & QA", "days": 3, "parallelGroup": "f", "dependsOn": ["e1", "e2", "e3"] },
+        { "phase": "P11: Docs & GTM", "days": 2, "parallelGroup": "g", "dependsOn": ["f"] }
+      ]
+    },
+
+    "orchestratorCommand": "Please spawn an agents-orchestrator to execute complete development pipeline for project-specs/nexus-orchestration-plan.md. Run autonomous workflow: (P0 foundation) → [Backend Architect builds M5 → M3 → M1 → M2 → M4] parallel-with [Infrastructure Maintainer builds M6 → M7] → [UI Designer builds P8] → [Integration QA by TestingRealityChecker]. Each task must pass QA before advancing. Max 3 retries per task."
+  }
+}
