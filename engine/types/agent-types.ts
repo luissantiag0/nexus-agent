@@ -26,7 +26,8 @@ export type AgentStatus =
   | "failed"
   | "skipped"
   | "timed_out"
-  | "circuit_broken";
+  | "circuit_broken"
+  | "waiting";
 
 export interface AgentResult<TData = unknown> {
   /** Unique execution ID for this invocation. */
@@ -258,6 +259,40 @@ export interface ChainStepResult {
 }
 
 // ============================================================================
+// New Primitives: Node types, merge strategies, route branches
+// ============================================================================
+
+/**
+ * The type of a graph node, determining how it is executed.
+ * - standard: Executes an agent adapter via AgentRunner.
+ * - conditional_router: Evaluates conditions and routes to a branch.
+ * - synchronizer: Waits for upstream nodes and merges their context.
+ */
+export type GraphNodeType = "standard" | "conditional_router" | "synchronizer";
+
+/**
+ * Merge strategy for combining context contributions from multiple upstream nodes.
+ * - shallow: First-level keys are merged (Object.assign style).
+ * - deep: Recursive deep merge of nested objects.
+ * - overwrite: Later sources completely replace earlier ones.
+ */
+export type MergeStrategy = "shallow" | "deep" | "overwrite";
+
+/**
+ * A single route branch in a conditional router node.
+ */
+export interface RouteBranch {
+  /** The target node ID to route to if this branch is selected. */
+  targetNodeId: string;
+  /** Condition that must be true for this branch to be selected. */
+  condition: (context: AgentContext) => boolean | Promise<boolean>;
+  /** Priority (lower number = higher priority). Defaults to 100. */
+  priority?: number;
+  /** Optional human-readable label. */
+  label?: string;
+}
+
+// ============================================================================
 // AgentGraph — DAG-based execution with parallel branches
 // ============================================================================
 
@@ -267,7 +302,9 @@ export interface ChainStepResult {
 export interface GraphNode<TIn = Record<string, unknown>, TOut = Record<string, unknown>> {
   /** Unique node identifier. */
   id: string;
-  /** The agent adapter to execute at this node. */
+  /** Node type determines execution behavior. Defaults to "standard". */
+  type?: GraphNodeType;
+  /** The agent adapter to execute at this node (required for standard nodes). */
   agent: AgentAdapter<TIn, TOut>;
   /** Input mapping from context. */
   inputMap: (context: AgentContext) => BaseAgentInput<TIn>;
@@ -279,6 +316,22 @@ export interface GraphNode<TIn = Record<string, unknown>, TOut = Record<string, 
   maxRetries?: number;
   /** Metadata for filtering/grouping. */
   tags?: string[];
+
+  // ========================================================================
+  // Conditional Router configuration (used when type = "conditional_router")
+  // ========================================================================
+  /** Route branches for conditional routing. */
+  routes?: RouteBranch[];
+
+  // ========================================================================
+  // Synchronizer configuration (used when type = "synchronizer")
+  // ========================================================================
+  /** Merge strategy for combining upstream context contributions. */
+  mergeStrategy?: MergeStrategy;
+  /** Timeout in ms for waiting on upstream nodes. */
+  synchronizerTimeoutMs?: number;
+  /** Whether ALL upstream nodes must complete before proceeding. */
+  requireAllUpstream?: boolean;
 }
 
 /**
@@ -355,8 +408,8 @@ export interface WorkflowDefinition {
   /** Workflow description. */
   description: string;
 
-  /** Execution mode: chain (sequential) or graph (DAG). */
-  mode: "chain" | "graph";
+  /** Execution mode: chain (sequential), graph (DAG), or execution_graph (full ExecutionLoop). */
+  mode: "chain" | "graph" | "execution_graph";
 
   /** Chain steps (used when mode = "chain"). */
   chain?: ChainStep[];

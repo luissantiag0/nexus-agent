@@ -20,6 +20,9 @@ import type { AgentId } from "@/lib/agents/registry/types";
 import { NexusAgentContext } from "./agent-context";
 import { AgentChain } from "./agent-chain";
 import { AgentGraph } from "./agent-graph";
+import { ExecutionLoop, type ExecutionLoopConfig } from "./execution-loop";
+import { GraphValidator } from "./graph-validator";
+import { ExecutionHistory } from "./execution-history";
 import { InProcessWorkerPool } from "./worker-pool";
 import { v4 as uuid } from "uuid";
 
@@ -37,6 +40,22 @@ export interface WorkflowEngineConfig {
     concurrency: number;
     maxQueueSize: number;
   };
+  /** Graph validation options. */
+  validation: {
+    /** Validate graphs before execution (default: true). */
+    validateBeforeExecution: boolean;
+    /** Throw on validation errors (default: false — returns error result). */
+    throwOnValidationError: boolean;
+  };
+  /** History tracking options. */
+  tracking: {
+    /** Track execution history (default: true). */
+    trackHistory: boolean;
+    /** Maximum history entries to keep in memory (default: 10000). */
+    maxHistoryEntries: number;
+  };
+  /** ExecutionLoop configuration overrides. */
+  executionLoop?: Partial<ExecutionLoopConfig>;
 }
 
 export const DEFAULT_ENGINE_CONFIG: WorkflowEngineConfig = {
@@ -45,6 +64,14 @@ export const DEFAULT_ENGINE_CONFIG: WorkflowEngineConfig = {
   workerPool: {
     concurrency: 4,
     maxQueueSize: 1000,
+  },
+  validation: {
+    validateBeforeExecution: true,
+    throwOnValidationError: false,
+  },
+  tracking: {
+    trackHistory: true,
+    maxHistoryEntries: 10000,
   },
 };
 
@@ -128,11 +155,17 @@ export class WorkflowEngine {
       workflow.chain?.length ?? workflow.graph?.nodes.length ?? 0,
     );
 
+    // Execution history tracking
+    let executionHistory: ExecutionHistory | null = null;
+    if (this.config.tracking.trackHistory) {
+      executionHistory = new ExecutionHistory(executionId);
+    }
+
     try {
       let result: ChainResult | GraphResult;
 
       if (workflow.mode === "chain" && workflow.chain) {
-        // Sequential execution
+        // Sequential execution (backward compatible)
         const chain = new AgentChain(
           workflow.chain as ChainStep[],
           executionId,
@@ -140,13 +173,62 @@ export class WorkflowEngine {
         );
         result = await chain.execute(context as unknown as IAgentContext);
       } else if (workflow.mode === "graph" && workflow.graph) {
-        // DAG execution
+        // DAG execution (backward compatible)
         const graph = new AgentGraph(
           workflow.graph.nodes as GraphNode[],
           workflow.graph.edges as GraphEdge[],
           executionId,
         );
         result = await graph.execute(context as unknown as IAgentContext);
+      } else if (workflow.mode === "execution_graph" && workflow.graph) {
+        // ── Full ExecutionLoop with all primitives ────────────────────
+        const nodes = workflow.graph.nodes as GraphNode[];
+        const edges = workflow.graph.edges as GraphEdge[];
+
+        // Pre-execution validation
+        if (this.config.validation.validateBeforeExecution) {
+          const validator = new GraphValidator();
+          const validation = validator.validate(nodes, edges);
+          if (!validation.valid) {
+            const errorMsg = validation.errors.map((e) => e.message).join("; ");
+            if (this.config.validation.throwOnValidationError) {
+              throw new Error(`Graph validation failed: ${errorMsg}`);
+            }
+            return {
+              executionId,
+              workflowId,
+              status: "failed",
+              mode: workflow.mode,
+              result: null,
+              context: context.snapshot(),
+              totalDurationMs: Date.now() - startedAt,
+              error: `Graph validation failed: ${errorMsg}`,
+              history: executionHistory?.toJSON() ?? null,
+            };
+          }
+        }
+
+        // Create and run execution loop
+        const loop = new ExecutionLoop(
+          nodes,
+          edges,
+          {
+            validateGraph: false, // Already validated above
+            trackHistory: this.config.tracking.trackHistory,
+            ...this.config.executionLoop,
+          },
+          executionId,
+        );
+
+        result = await loop.execute(context as unknown as IAgentContext);
+
+        // Capture history from loop
+        if (executionHistory) {
+          const loopHistory = loop.getHistory();
+          if (loopHistory) {
+            executionHistory = loopHistory;
+          }
+        }
       } else {
         throw new Error(`Invalid workflow configuration for '${workflowId}'`);
       }
@@ -156,12 +238,13 @@ export class WorkflowEngine {
       return {
         executionId,
         workflowId,
-        status: result.status === "completed" ? "completed" : "failed",
+        status: result.status === "completed" || result.status === "partial" ? "completed" : "failed",
         mode: workflow.mode,
         result,
         context: context.snapshot(),
         totalDurationMs,
         error: result.error,
+        history: executionHistory?.toJSON() ?? null,
       };
     } catch (error) {
       return {
@@ -173,6 +256,7 @@ export class WorkflowEngine {
         context: context.snapshot(),
         totalDurationMs: Date.now() - startedAt,
         error: error instanceof Error ? error.message : String(error),
+        history: executionHistory?.toJSON() ?? null,
       };
     }
   }
@@ -227,8 +311,10 @@ export class WorkflowEngine {
     if (workflow.mode === "chain" && workflow.chain) {
       return workflow.chain.map((s) => s.agent.metadata.id);
     }
-    if (workflow.mode === "graph" && workflow.graph) {
-      return workflow.graph.nodes.map((n) => n.agent.metadata.id);
+    if ((workflow.mode === "graph" || workflow.mode === "execution_graph") && workflow.graph) {
+      return workflow.graph.nodes
+        .filter((n) => (n as any).type === undefined || (n as any).type === "standard")
+        .map((n) => n.agent.metadata.id);
     }
     return [];
   }
@@ -256,11 +342,37 @@ export interface WorkflowExecutionResult {
   executionId: string;
   workflowId: string;
   status: "completed" | "failed" | "running";
-  mode: "chain" | "graph";
+  mode: "chain" | "graph" | "execution_graph";
   result: ChainResult | GraphResult | null;
   context: Record<string, unknown>;
   totalDurationMs: number;
   error: string | null;
+  /** Execution history snapshot (only populated for execution_graph mode). */
+  history?: {
+    executionId: string;
+    entries: Array<{
+      nodeId: string;
+      agentId: string;
+      state: string;
+      startedAt: string;
+      completedAt: string | null;
+      durationMs: number;
+      error: string | null;
+      retryCount: number;
+      metadata?: Record<string, unknown>;
+    }>;
+    summary: {
+      totalNodes: number;
+      completed: number;
+      failed: number;
+      skipped: number;
+      waiting: number;
+      running: number;
+      pending: number;
+      totalDurationMs: number;
+      hasErrors: boolean;
+    };
+  } | null;
 }
 
 export interface EngineHealth {
