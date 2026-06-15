@@ -17,10 +17,11 @@ import type {
   AgentContext as IAgentContext,
 } from "@/engine/types/agent-types";
 import type { AgentId } from "@/lib/agents/registry/types";
+import type { AgentRegistry } from "@/engine/registry";
 import { NexusAgentContext } from "./agent-context";
 import { AgentChain } from "./agent-chain";
 import { AgentGraph } from "./agent-graph";
-import { ExecutionLoop, type ExecutionLoopConfig } from "./execution-loop";
+import { ExecutionLoop, type ExecutionLoopConfig } from "./execution-loop-v2";
 import { GraphValidator } from "./graph-validator";
 import { ExecutionHistory } from "./execution-history";
 import { InProcessWorkerPool } from "./worker-pool";
@@ -83,9 +84,14 @@ export class WorkflowEngine {
   private readonly config: WorkflowEngineConfig;
   private readonly workerPool: InProcessWorkerPool;
   private readonly workflows = new Map<string, WorkflowDefinition>();
+  private readonly registry?: AgentRegistry;
 
-  constructor(config: Partial<WorkflowEngineConfig> = {}) {
+  constructor(
+    config: Partial<WorkflowEngineConfig> = {},
+    registry?: AgentRegistry,
+  ) {
     this.config = { ...DEFAULT_ENGINE_CONFIG, ...config };
+    this.registry = registry;
     this.workerPool = new InProcessWorkerPool({
       concurrency: this.config.workerPool.concurrency,
       maxQueueSize: this.config.workerPool.maxQueueSize,
@@ -208,7 +214,7 @@ export class WorkflowEngine {
           }
         }
 
-        // Create and run execution loop
+        // Create and run execution loop (v2 — resolves adapters via registry)
         const loop = new ExecutionLoop(
           nodes,
           edges,
@@ -218,6 +224,7 @@ export class WorkflowEngine {
             ...this.config.executionLoop,
           },
           executionId,
+          this.registry, // Pass registry (undefined → uses singleton)
         );
 
         result = await loop.execute(context as unknown as IAgentContext);
