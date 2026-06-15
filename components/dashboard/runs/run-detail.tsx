@@ -9,6 +9,7 @@ import {
 } from "react";
 import Link from "next/link";
 import type { ExecutionRun, ExecutionEvent } from "@/lib/execution-events/types";
+import { ExecutionEventType } from "@/lib/execution-events/types";
 import { cx, formatDuration, formatTimestamp, truncate } from "@/lib/utils";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import type { StatusBadgeStatus } from "@/components/dashboard/status-badge";
@@ -173,6 +174,46 @@ export function RunDetail({ initialRun }: RunDetailProps) {
   const [contextVersion, setContextVersion] = useState(
     initialRun.contextSnapshots.length > 0 ? initialRun.contextSnapshots.length - 1 : 0,
   );
+  const [controlLoading, setControlLoading] = useState(false);
+
+  // --- Auto-update context version to latest ---
+  useEffect(() => {
+    if (!paused && initialRun.contextSnapshots.length > 0) {
+      setContextVersion(initialRun.contextSnapshots.length - 1);
+    }
+  }, [initialRun.contextSnapshots.length, paused]);
+
+  // --- Control handler ---
+  const handleControl = useCallback(async (action: "pause" | "resume" | "cancel" | "step") => {
+    setControlLoading(true);
+    try {
+      await fetch(`/api/runs/${encodeURIComponent(initialRun.runId)}/control`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+    } catch {
+      /* Silently fail — connection banner will show */
+    } finally {
+      setControlLoading(false);
+    }
+  }, [initialRun.runId]);
+
+  // --- Highlighted node IDs for edge animation ---
+  const highlightedNodeIds = useMemo(() => {
+    if (allEvents.length === 0) return new Set<string>();
+    const latest = allEvents[allEvents.length - 1];
+    if (latest.nodeId) return new Set([latest.nodeId]);
+    return new Set<string>();
+  }, [allEvents]);
+
+  // --- Determine if terminal ---
+  const isTerminal = useMemo(() => {
+    return ["completed", "failed", "cancelled"].includes(liveRun.status)
+      || allEvents.some((e) =>
+        [ExecutionEventType.EXECUTION_COMPLETED, ExecutionEventType.EXECUTION_FAILED].includes(e.type)
+      );
+  }, [liveRun.status, allEvents]);
 
   // --- Pause / resume ---
   const displayEvents = useMemo(
@@ -250,6 +291,49 @@ export function RunDetail({ initialRun }: RunDetailProps) {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
+          {/* Control buttons — only show for non-terminal runs */}
+          {!isTerminal && (
+            <>
+              <button
+                type="button"
+                onClick={() => handleControl("pause")}
+                disabled={controlLoading}
+                className="inline-flex items-center gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-400 dark:hover:bg-amber-950/50 transition-colors"
+                aria-label="Pause run"
+              >
+                ⏸ Pause
+              </button>
+              <button
+                type="button"
+                onClick={() => handleControl("resume")}
+                disabled={controlLoading}
+                className="inline-flex items-center gap-1.5 rounded-md border border-blue-300 bg-blue-50 px-2.5 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50 dark:border-blue-700 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-950/50 transition-colors"
+                aria-label="Resume run"
+              >
+                ▶ Resume
+              </button>
+              <button
+                type="button"
+                onClick={() => handleControl("step")}
+                disabled={controlLoading}
+                className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700 transition-colors"
+                aria-label="Step forward"
+              >
+                ⏭ Step
+              </button>
+              <button
+                type="button"
+                onClick={() => handleControl("cancel")}
+                disabled={controlLoading}
+                className="inline-flex items-center gap-1.5 rounded-md border border-red-300 bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-50 dark:border-red-700 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50 transition-colors"
+                aria-label="Cancel run"
+              >
+                ✕ Cancel
+              </button>
+              <span className="h-4 w-px bg-zinc-200 dark:bg-zinc-700" />
+            </>
+          )}
+
           <button
             type="button"
             onClick={() => setPaused((v) => !v)}
@@ -297,6 +381,7 @@ export function RunDetail({ initialRun }: RunDetailProps) {
             nodes={dagData.nodes}
             edges={dagData.edges}
             selectedNodeId={selectedNodeId}
+            highlightedNodeIds={highlightedNodeIds}
             onNodeClick={setSelectedNodeId}
             width={320}
             height={280}
@@ -356,7 +441,7 @@ export function RunDetail({ initialRun }: RunDetailProps) {
         {/* RIGHT PANEL — Context inspector */}
         <div className="flex w-[380px] shrink-0 flex-col">
           <ContextInspector
-            snapshots={initialRun.contextSnapshots}
+            snapshots={liveRun.contextSnapshots}
             selectedVersion={contextVersion}
             onVersionChange={setContextVersion}
             className="max-h-[calc(100vh-13rem)]"

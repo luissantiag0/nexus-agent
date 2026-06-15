@@ -190,6 +190,21 @@ export interface ExecutionHooks {
     to: string,
     reason?: string,
   ): void;
+
+  /**
+   * Called when a run is paused (user-initiated or system-initiated).
+   */
+  onRunPaused?(runId: string, reason?: string): void;
+
+  /**
+   * Called when a paused run is resumed.
+   */
+  onRunResumed?(runId: string): void;
+
+  /**
+   * Called when a run is cancelled.
+   */
+  onRunCancelled?(runId: string, reason?: string): void;
 }
 
 // ---------------------------------------------------------------------------
@@ -588,5 +603,5 @@ export function instrumentExecutionLoop(
     onExecutionCompleted,
     onExecutionFailed,
     onStateTransition,
-  };
+  } as ExecutionHooks;
 }

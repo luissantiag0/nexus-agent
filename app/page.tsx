@@ -1,6 +1,48 @@
 import Link from "next/link";
+import { createClient } from "@/utils/supabase/server";
 
-export default function Home() {
+async function TodoList() {
+  const supabase = await createClient();
+  const { data: todos, error } = await supabase.from("todos").select("*").limit(10);
+
+  if (error) {
+    return (
+      <p className="text-xs text-red-500">
+        Failed to load: {error.message}
+      </p>
+    );
+  }
+
+  if (!todos || todos.length === 0) {
+    return (
+      <p className="text-xs text-gray-400">
+        No todos yet. Create the <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">todos</code> table in Supabase or insert some rows.
+      </p>
+    );
+  }
+
+  return (
+    <ul className="space-y-2">
+      {todos.map((todo: any) => (
+        <li
+          key={todo.id}
+          className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm dark:border-gray-700 dark:bg-gray-900"
+        >
+          <span
+            className={`h-2 w-2 shrink-0 rounded-full ${
+              todo.is_complete ? "bg-green-500" : "bg-yellow-400"
+            }`}
+          />
+          <span className={todo.is_complete ? "text-gray-400 line-through" : "text-gray-700 dark:text-gray-300"}>
+            {todo.title ?? todo.name ?? `Todo #${todo.id}`}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export default async function Home() {
   return (
     <div className="flex min-h-screen flex-col bg-white dark:bg-gray-950">
       {/* Nav */}
@@ -109,6 +151,14 @@ export default function Home() {
           ))}
         </div>
       </main>
+
+      {/* Supabase Integration Example */}
+      <section className="mx-auto mt-16 w-full max-w-md">
+        <h2 className="mb-3 text-center text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+          Supabase &middot; Todos
+        </h2>
+        <TodoList />
+      </section>
 
       {/* Footer */}
       <footer className="border-t border-gray-200 px-6 py-4 text-center text-xs text-gray-400 dark:border-gray-800 dark:text-gray-500">

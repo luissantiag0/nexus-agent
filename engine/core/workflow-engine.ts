@@ -22,6 +22,7 @@ import { NexusAgentContext } from "./agent-context";
 import { AgentChain } from "./agent-chain";
 import { AgentGraph } from "./agent-graph";
 import { ExecutionLoop, type ExecutionLoopConfig } from "./execution-loop-v2";
+import type { ExecutionHooks } from "@/lib/execution-events/execution-hooks";
 import { GraphValidator } from "./graph-validator";
 import { ExecutionHistory } from "./execution-history";
 import { InProcessWorkerPool } from "./worker-pool";
@@ -57,6 +58,12 @@ export interface WorkflowEngineConfig {
   };
   /** ExecutionLoop configuration overrides. */
   executionLoop?: Partial<ExecutionLoopConfig>;
+  /**
+   * Optional instrumentation hooks (e.g. PersistenceInstrumentation).
+   * Only applies to execution_graph mode. If provided, these hooks are
+   * called at every lifecycle transition during execution.
+   */
+  hooks?: ExecutionHooks;
 }
 
 export const DEFAULT_ENGINE_CONFIG: WorkflowEngineConfig = {
@@ -225,6 +232,7 @@ export class WorkflowEngine {
           },
           executionId,
           this.registry, // Pass registry (undefined → uses singleton)
+          this.config.hooks, // Optional persistence/observability hooks
         );
 
         result = await loop.execute(context as unknown as IAgentContext);
@@ -301,6 +309,15 @@ export class WorkflowEngine {
       workerPool: poolStats,
       uptime: process.uptime(),
     };
+  }
+
+  /**
+   * Set instrumentation hooks after construction.
+   * Useful when hooks are created after the engine is initialised.
+   * Only applies to subsequent execution_graph runs.
+   */
+  setHooks(hooks: ExecutionHooks): void {
+    (this.config as any).hooks = hooks;
   }
 
   /**

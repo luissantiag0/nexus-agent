@@ -30,6 +30,9 @@ const EVENT_ICONS: Record<string, string> = {
   [ExecutionEventType.EXECUTION_COMPLETED]: "\uD83C\uDFC1",     // 🏁
   [ExecutionEventType.EXECUTION_FAILED]: "\uD83D\uDEAB",        // 🚫
   [ExecutionEventType.STATE_TRANSITION]: "\uD83D\uDD04",        // 🔄
+  [ExecutionEventType.RUN_PAUSED]: "\u23F8",                   // ⏸
+  [ExecutionEventType.RUN_RESUMED]: "\u25B6",                  // ▶
+  [ExecutionEventType.RUN_CANCELLED]: "\uD83D\uDEAB",          // 🚫
 };
 
 const EVENT_COLORS: Record<string, string> = {
@@ -46,6 +49,9 @@ const EVENT_COLORS: Record<string, string> = {
   [ExecutionEventType.EXECUTION_COMPLETED]: "text-green-600 dark:text-green-400",
   [ExecutionEventType.EXECUTION_FAILED]: "text-red-600 dark:text-red-400",
   [ExecutionEventType.STATE_TRANSITION]: "text-zinc-600 dark:text-zinc-400",
+  [ExecutionEventType.RUN_PAUSED]: "text-amber-600 dark:text-amber-400",
+  [ExecutionEventType.RUN_RESUMED]: "text-blue-600 dark:text-blue-400",
+  [ExecutionEventType.RUN_CANCELLED]: "text-red-600 dark:text-red-400",
 };
 
 const EVENT_BG_COLORS: Record<string, string> = {
@@ -60,6 +66,9 @@ const EVENT_BG_COLORS: Record<string, string> = {
   [ExecutionEventType.SYNCHRONIZER_MERGED]: "bg-purple-50/50 dark:bg-purple-950/10",
   [ExecutionEventType.EXECUTION_COMPLETED]: "bg-green-50/50 dark:bg-green-950/10",
   [ExecutionEventType.EXECUTION_FAILED]: "bg-red-50/50 dark:bg-red-950/10",
+  [ExecutionEventType.RUN_PAUSED]: "bg-amber-50/50 dark:bg-amber-950/10",
+  [ExecutionEventType.RUN_RESUMED]: "bg-blue-50/50 dark:bg-blue-950/10",
+  [ExecutionEventType.RUN_CANCELLED]: "bg-red-50/50 dark:bg-red-950/10",
 };
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
@@ -76,6 +85,9 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   [ExecutionEventType.EXECUTION_COMPLETED]: "Execution Completed",
   [ExecutionEventType.EXECUTION_FAILED]: "Execution Failed",
   [ExecutionEventType.STATE_TRANSITION]: "State Transition",
+  [ExecutionEventType.RUN_PAUSED]: "Run Paused",
+  [ExecutionEventType.RUN_RESUMED]: "Run Resumed",
+  [ExecutionEventType.RUN_CANCELLED]: "Run Cancelled",
 };
 
 // ============================================================================
@@ -126,6 +138,12 @@ function getEventDescription(event: ExecutionEvent): string {
       return `Execution failed: ${data?.error ?? "unknown error"}`;
     case ExecutionEventType.STATE_TRANSITION:
       return `State transition → ${data?.to ?? "?"}`;
+    case ExecutionEventType.RUN_PAUSED:
+      return data?.reason ? `Paused: ${data.reason}` : "Paused";
+    case ExecutionEventType.RUN_RESUMED:
+      return "Resumed";
+    case ExecutionEventType.RUN_CANCELLED:
+      return data?.reason ? `Cancelled: ${data.reason}` : "Cancelled";
     default:
       return "";
   }

@@ -30,6 +30,9 @@ export enum ExecutionEventType {
   EXECUTION_COMPLETED = "EXECUTION_COMPLETED",
   EXECUTION_FAILED = "EXECUTION_FAILED",
   STATE_TRANSITION = "STATE_TRANSITION",
+  RUN_PAUSED = "RUN_PAUSED",
+  RUN_RESUMED = "RUN_RESUMED",
+  RUN_CANCELLED = "RUN_CANCELLED",
 }
 
 // ---------------------------------------------------------------------------

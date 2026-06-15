@@ -315,7 +315,17 @@ export function DAGViewer({
                   strokeWidth={isHighlighted ? 2.5 : 1.5}
                   strokeLinecap="round"
                   markerEnd="url(#arrowhead)"
+                  strokeDasharray={edge.data.type.startsWith("CONDITIONAL") ? "5,3" : undefined}
                 />
+                {isHighlighted && (
+                  <circle r={4} fill="#60a5fa" opacity={0.8}>
+                    <animateMotion
+                      dur="1.5s"
+                      repeatCount="indefinite"
+                      path={`M ${edge.from.x} ${edge.from.y} Q ${midX} ${edge.from.y} ${midX} ${midY} Q ${midX} ${edge.to.y} ${edge.to.x} ${edge.to.y}`}
+                    />
+                  </circle>
+                )}
               </g>
             );
           })}
@@ -352,10 +362,17 @@ export function DAGViewer({
                     colors.stroke,
                     isSelected && "!stroke-blue-600 dark:!stroke-blue-400",
                     isHighlighted && "!stroke-blue-400 dark:!stroke-blue-400",
+                    node.status === "running" && "animate-pulse",
                     "transition-[stroke] duration-150",
                   )}
                   strokeWidth={isSelected || isHighlighted ? 2.5 : 1.5}
                 />
+                {node.type === "conditional_router" && (
+                  <polygon
+                    points={`${NODE_WIDTH - 12},6 ${NODE_WIDTH - 4},${NODE_HEIGHT / 2} ${NODE_WIDTH - 12},${NODE_HEIGHT - 6}`}
+                    className="fill-amber-400/60 dark:fill-amber-500/40"
+                  />
+                )}
                 <text
                   x={NODE_WIDTH / 2}
                   y={NODE_HEIGHT / 2}

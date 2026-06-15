@@ -35,6 +35,7 @@ import { ConditionalRouter, type RouterResult } from "./conditional-router";
 import { ConditionEvaluator } from "./condition-evaluator";
 import { Synchronizer, type SynchronizerResult } from "./synchronizer";
 import { ContextMerger, type MergeStrategy } from "./context-merger";
+import type { ExecutionHooks } from "@/lib/execution-events/execution-hooks";
 import { AgentRegistry, agentRegistry } from "@/engine/registry";
 import type { IAgentAdapter } from "@/engine/registry";
 import { v4 as uuid } from "uuid";
@@ -148,17 +149,22 @@ export class ExecutionLoop {
   private stateMachines: Map<string, ExecutionStateMachine> | null = null;
   private executionId: string = "";
 
+  /** Optional instrumentation hooks (observability + persistence). */
+  private hooks: ExecutionHooks | null = null;
+
   constructor(
     nodes: readonly GraphNode[],
     edges: readonly GraphEdge[],
     config?: Partial<ExecutionLoopConfig>,
     graphId?: string,
     registry?: AgentRegistry,
+    hooks?: ExecutionHooks,
   ) {
     this.nodes = nodes;
     this.edges = edges;
     this.config = { ...DEFAULT_LOOP_CONFIG, ...config };
     this.graphId = graphId ?? `loop-${uuid().slice(0, 8)}`;
+    this.hooks = hooks ?? null;
 
     // Resolve adapters through the registry (default to singleton)
     this.registry = registry ?? agentRegistry;
@@ -206,6 +212,9 @@ export class ExecutionLoop {
       );
       if (!validation.valid) {
         const errorMsg = validation.errors.map((e) => e.message).join("; ");
+        if (this.hooks) {
+          this.hooks.onExecutionFailed(this.executionId, `Graph validation failed: ${errorMsg}`, Date.now() - startedAt);
+        }
         return {
           graphId: this.graphId,
           status: "failed",
@@ -222,19 +231,33 @@ export class ExecutionLoop {
     try {
       executionOrder = topologicalSort([...this.nodes], [...this.edges]);
     } catch (error) {
+      const sortError = error instanceof Error ? error.message : "Topological sort failed";
+      if (this.hooks) {
+        this.hooks.onExecutionFailed(this.executionId, sortError, Date.now() - startedAt);
+      }
       return {
         graphId: this.graphId,
         status: "failed",
         nodeResults: new Map(),
         executionOrder: [],
         totalDurationMs: Date.now() - startedAt,
-        error: error instanceof Error ? error.message : "Topological sort failed",
+        error: sortError,
       };
     }
 
     // ── Phase 3: Initialize State Machines ────────────────────────────
     for (const node of this.nodes) {
       this.stateMachines.set(node.id, new ExecutionStateMachine("pending"));
+    }
+
+    // ── Phase 3b: Instrumentation — run initialized ────────────────────
+    if (this.hooks) {
+      this.hooks.onRunInitialized(
+        this.executionId,
+        this.graphId,
+        this.nodes as any,
+        this.edges as any,
+      );
     }
 
     // ── Phase 4: Execute Level by Level ───────────────────────────────
@@ -251,14 +274,22 @@ export class ExecutionLoop {
 
     for (const level of levels) {
       // Execute all nodes in this level in parallel
-      const promises = level.map((nodeId) => {
+      const promises = level.map(async (nodeId) => {
         if (routerSkipped.has(nodeId)) {
-          return this.createSkippedResult(nodeId, context, completed, failed, "Skipped by conditional router");
+          const result = await this.createSkippedResult(nodeId, context, completed, failed, "Skipped by conditional router");
+          if (this.hooks) {
+            this.hooks.onNodeSkipped(this.executionId, nodeId, "", "Skipped by conditional router");
+          }
+          return result;
         }
 
         const sm = this.stateMachines!.get(nodeId)!;
         if (!sm.canTransition("running")) {
-          return this.createSkippedResult(nodeId, context, completed, failed, `Node in state '${sm.currentState}'`);
+          const result = await this.createSkippedResult(nodeId, context, completed, failed, `Node in state '${sm.currentState}'`);
+          if (this.hooks) {
+            this.hooks.onNodeSkipped(this.executionId, nodeId, "", `Node in state '${sm.currentState}'`);
+          }
+          return result;
         }
 
         return this.executeNode(nodeId, context, completed, failed, skipped, routerSkipped);
@@ -319,6 +350,15 @@ export class ExecutionLoop {
       finalStatus = "partial";
     }
 
+    // ── Instrumentation: execution terminal ─────────────────────────────
+    if (this.hooks) {
+      if (finalStatus === "failed") {
+        this.hooks.onExecutionFailed(this.executionId, finalError ?? "Unknown error", totalDurationMs);
+      } else {
+        this.hooks.onExecutionCompleted(this.executionId, finalStatus, totalDurationMs);
+      }
+    }
+
     return {
       graphId: this.graphId,
       status: finalStatus,
@@ -369,26 +409,60 @@ export class ExecutionLoop {
     const deps = this.reverseAdj.get(nodeId) ?? [];
     for (const dep of deps) {
       if (failed.has(dep) || routerSkipped.has(dep)) {
-        return this.createSkippedResult(nodeId, context, completed, failed,
+        const skipResult = await this.createSkippedResult(nodeId, context, completed, failed,
           `Dependency '${dep}' failed`);
+        if (this.hooks) {
+          this.hooks.onNodeSkipped(this.executionId, nodeId, node.agent?.metadata?.id ?? nodeId, `Dependency '${dep}' failed`);
+        }
+        return skipResult;
       }
       if (skipped.has(dep)) {
-        return this.createSkippedResult(nodeId, context, completed, failed,
+        const skipResult = await this.createSkippedResult(nodeId, context, completed, failed,
           `Dependency '${dep}' was skipped`);
+        if (this.hooks) {
+          this.hooks.onNodeSkipped(this.executionId, nodeId, node.agent?.metadata?.id ?? nodeId, `Dependency '${dep}' was skipped`);
+        }
+        return skipResult;
       }
     }
 
-    // ── Handle by node type ────────────────────────────────────────────
+    // ── Instrumentation: node started ──────────────────────────────────
+    const agentId = node.agent?.metadata?.id ?? nodeId;
+    if (this.hooks) {
+      this.hooks.onNodeStarted(this.executionId, nodeId, agentId);
+    }
+
+    // ── Execute by node type ────────────────────────────────────────────
+    let result: GraphNodeResult;
     switch (nodeType) {
       case "conditional_router":
-        return this.executeConditionalRouter(node, context, completed, failed, skipped, routerSkipped, sm);
-
+        result = await this.executeConditionalRouter(node, context, completed, failed, skipped, routerSkipped, sm);
+        break;
       case "synchronizer":
-        return this.executeSynchronizer(node, context, completed, failed, skipped, sm);
-
+        result = await this.executeSynchronizer(node, context, completed, failed, skipped, sm);
+        break;
       default:
-        return this.executeStandardNode(node, context, completed, failed, sm);
+        result = await this.executeStandardNode(node, context, completed, failed, sm);
     }
+
+    // ── Instrumentation: node lifecycle event ───────────────────────────
+    if (this.hooks) {
+      switch (result.status) {
+        case "completed":
+          this.hooks.onNodeCompleted(this.executionId, nodeId, agentId, result.result?.data ?? null);
+          break;
+        case "failed":
+        case "timed_out":
+        case "circuit_broken":
+          this.hooks.onNodeFailed(this.executionId, nodeId, agentId, result.error ?? "Unknown error", result.result?.retryCount ?? 0);
+          break;
+        case "skipped":
+          this.hooks.onNodeSkipped(this.executionId, nodeId, agentId, result.error ?? "Skipped");
+          break;
+      }
+    }
+
+    return result;
   }
 
   // ========================================================================
@@ -741,6 +815,21 @@ export class ExecutionLoop {
    */
   getHistory(): ExecutionHistory | null {
     return this.history;
+  }
+
+  /**
+   * Attach or replace instrumentation hooks after construction.
+   * Useful when hooks depend on runtime state not available at construction.
+   */
+  setHooks(hooks: ExecutionHooks): void {
+    this.hooks = hooks;
+  }
+
+  /**
+   * Get the current execution ID (set during execute()).
+   */
+  getExecutionId(): string {
+    return this.executionId;
   }
 
   /**
